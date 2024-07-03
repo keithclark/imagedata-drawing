@@ -1,0 +1,15 @@
+{
+  "name": "@keithclark/imagedata-drawing",
+  "version": "1.0.0",
+  "description": "Provides a 2D drawing context for manipulating pixels in ImageData objects",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": {
+    "name": "Keith Clark",
+    "url": "https://keithclark.co.uk"
+  },
+  "license": "MIT"
+}
