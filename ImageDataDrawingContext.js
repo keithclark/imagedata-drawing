@@ -7,6 +7,7 @@ import TextStyle from './interfaces/TextStyle.js';
 /**
  * @typedef {import('./interfaces/TextMetrics.js').default} TextMetrics
  * @typedef {import('imagedata').default} ImageData
+ * @typedef {import('./interfaces/Rasterizer.js').Transform} Transform
  */
 
 /** 
@@ -296,6 +297,32 @@ export default class ImageDataDrawingContext {
       this.#rasterizer.putImageData(image, dx, dy, 0, 0, image.width, image.height);
     } else if (arguments.length === 7) {
       this.#rasterizer.putImageData(image, dx, dy, dirtyX, dirtyY, dirtyWidth, dirtyHeight);
+    } else {
+      throw new SyntaxError('Incorrect number of arguments');
+    }
+  }
+
+  /**
+   * Draws a source image from a ImageData instance onto the image using the 
+   * supplied transform, allowing the source image to be rotated and scaled.
+   * 
+   * @param {ImageData} image - The image object to draw
+   * @param {number} dx - The x-axis coordinate to place the image in the destination image. Can be negative
+   * @param {number} dy - The y-axis coordinate to place the image in the destination image. Can be negative
+   * @param {number} [sx=0] - The x-axis coordinate of the top-left corner from which the image data will be extracted. Can be negative
+   * @param {number} [sy=0] - The y-axis coordinate of the top-left corner from which the image data will be extracted. Can be negative
+   * @param {number} [sWidth] - Width of the source image data to extract. If omitted, the source image is drawn at its natural width.
+   * @param {number} [sHeight] - Height of the source image data to extract. If omitted, the source image is drawn at its natural height.
+   * @param {Transform} transform - The transform to apply
+   * @paramlist image, dx, dy, transform
+   * @paramlist image, sx, sy, sWidth, sHeight, dx, dy, transform
+   */
+  drawImageWithTransform(image, sx, sy, sWidth, sHeight, dx, dy, transform) {
+    if (arguments.length === 4) {
+      transform = sWidth;
+      this.#rasterizer.drawImageWithTransform(image, 0, 0, image.width, image.height, sx, sy, transform);
+    } else if (arguments.length === 8) {
+      this.#rasterizer.drawImageWithTransform(image, sx, sy, sWidth, sHeight, dx, dy, transform);
     } else {
       throw new SyntaxError('Incorrect number of arguments');
     }

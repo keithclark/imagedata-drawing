@@ -9,6 +9,17 @@ import TextWalker from './TextWalker.js';
  * @typedef {import('./TextStyle.js').default} TextStyle
  */
 
+/**
+ * @typedef Transform
+ * @property {number} [translateX=0] Number of pixels to translate the image along the x-axis
+ * @property {number} [translateY=0] Number of pixels to translate the image along the y-axis
+ * @property {number} [rotate=0] The angle, in radians, to rotate the image by
+ * @property {number} [scaleX=1] The scale multipler for streching the image along the x-axis
+ * @property {number} [scaleY=1] The scale multipler for streching the image along the y-axis
+ * @property {number} [originX=0] The x-axis origin for the transform
+ * @property {number} [originY=0] The y-axis origin for the transform
+ */
+
 export default class Rasterizer {
 
   /** @type {PixelView} */
@@ -347,4 +358,110 @@ export default class Rasterizer {
       sourcePos += imageData.width * 4;
     }
   }
+
+
+  /**
+   * Draws a given ImageData object to the underyling ImageData object using the
+   * supplied transform.
+   * 
+   * @param {ImageData} src The `ImageData` object containing the data to draw
+   * @param {number} sx left most pixel to begin copying data from
+   * @param {number} sy top most pixel to begin copying data from
+   * @param {number} sw width of the block to copy from
+   * @param {number} sh height of the block to copy from
+   * @param {number} dx position along the x-axis to draw to
+   * @param {number} dy position along the y-axis to draw to
+   * @param {Transform} transform
+   */
+  drawImageWithTransform(src, sx, sy, sw, sh, dx, dy, transform) {
+
+    const {
+      translateX = 0,
+      translateY = 0,
+      rotate = 0,
+      scaleX = 1,
+      scaleY = 1,
+      originX = 0,
+      originY = 0
+    } = transform;
+
+    dx += translateX;
+    dy += translateY;
+
+    const srcView = new PixelView(src);
+    const destView = new PixelView(this.#imageData);
+    
+    const { width: srcWidth, height: srcHeight } = src;
+    const { width: destWidth, height: destHeight } = this.#imageData;
+
+    const sinA = -Math.sin(rotate);
+    const cosA = Math.cos(rotate);
+
+
+    // Determine the axis-aligned bounding box needed to draw the transformed 
+    // source image in the destination image.
+    const x1 = -originX * scaleX;
+    const y1 = -originY * scaleY;
+    const x2 = x1 + sw * scaleX;
+    const y2 = y1 + sh * scaleY;
+
+    const verticies = [
+      {
+        x: y1 * sinA + x1 * cosA,
+        y: -x1 * sinA + y1 * cosA,
+      },
+      {
+        x: y1 * sinA + x2 * cosA,
+        y: -x2 * sinA + y1 * cosA,
+      },
+      {
+        x: y2 * sinA + x2 * cosA,
+        y: -x2 * sinA + y2 * cosA,
+      },
+      {
+        x: y2 * sinA + x1 * cosA,
+        y: -x1 * sinA + y2 * cosA,
+      }
+    ];
+
+    // Determine the bounding box
+    const startX = Math.floor(Math.max(0, Math.min(verticies[0].x, verticies[1].x, verticies[2].x, verticies[3].x) + dx));
+    const endX = Math.floor(Math.min(destWidth, Math.max(verticies[0].x, verticies[1].x, verticies[2].x, verticies[3].x) + dx ));
+    const startY = Math.floor(Math.max(0, Math.min(verticies[0].y, verticies[1].y, verticies[2].y, verticies[3].y) + dy));
+    const endY = Math.floor(Math.min(destHeight, Math.max(verticies[0].y, verticies[1].y, verticies[2].y, verticies[3].y) + dy ));
+
+    // Update the pixels in the destination image
+    for (let y = startY; y <= endY; y++) {
+      for (let x = startX; x <= endX; x++) {
+
+        const ox = x - dx;
+        const oy = y - dy;
+
+        let u = ox * cosA - oy * sinA;
+        let v = ox * sinA + oy * cosA;
+
+        u /= scaleX;
+        v /= scaleY;
+
+        u += originX;
+        v += originY;
+
+        u = Math.floor(u + sx);
+        v = Math.floor(v + sy);
+
+        // ensure u/v are valid coordinates in the src image
+        if (u < 0 || u > srcWidth || v < 0 || v > srcHeight) {
+          continue;
+        }
+
+        // ensure u/v are inside the source bounding box
+        if (u < sx || u >= sx + sw || v < sy || v >= sy + sh) {
+          continue;
+        }
+
+        destView.blendColor(x, y, srcView.getColor(u, v));
+      }
+    }
+  }
+
 }
